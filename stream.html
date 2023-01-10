@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style>
+            body {
+                background-color: black;
+                color: white;
+            }
+            div.section {
+                padding-bottom: 20px;
+            }
+            div#videos {
+                width: 640px;
+                height: 360px;
+                border: 1px solid white;
+                overflow: auto;
+            }
+            li.video {
+                display: list-item;
+                background-color: black;
+                margin-bottom: 10px;
+                cursor: pointer;
+            }
+        </style>
+        <script>
+            var filter
+            var videos
+            var title
+            var video
+            var prev
+            var next
+            var autoplay
+            var mode
+            var fullscreen
+
+            var videosFiltered
+            var videoIndexCurrent = NaN
+            var videoCurrent
+            var videosHistory = []
+            var prevCount = 0
+
+            function filterFormat(query) {
+                return query.toLowerCase().replace(/[^a-z0-9]/g, "")
+            }
+
+            function filterVideos() {
+                videosFiltered = []
+
+                window.localStorage.setItem("filter", filter.value)
+
+                const query = filterFormat(filter.value.trim())
+
+                for (var i = 0; i < videos.length; i++) {
+                    var display = "none"
+
+                    if (filterFormat(videos[i].innerHTML).includes(query)) {
+                        display = "list-item"
+
+                        videosFiltered.push(videos[i])
+                    }
+
+                    videos[i].style.display = display
+                }
+            }
+
+            function randomVideo(videos_) {
+                return videos_[Math.floor(Math.random() * videos_.length)]
+            }
+
+            function watch(video_) {
+                if (video_) {
+                    title.innerHTML = video_.innerHTML
+                    videoIndexCurrent = video_.getAttribute("index")
+                    video.innerHTML = `<source src="/video?index=${videoIndexCurrent}" type="video/mp4">`
+                    videoCurrent = video_
+                    videosHistory.push(video_)
+
+                    for (var i = 0; i < videos.length; i++) {
+                        videos[i].style.backgroundColor = videos[i] == videoCurrent ? "blue" : "black"
+                    }
+                }
+            }
+
+            function watchPrev() {
+                if (videosHistory.length > 1) {
+                    const index = videosHistory.length - 2 - prevCount
+
+                    if (index >= 0) {
+                        prevCount++
+
+                        watch(videosHistory[index])
+                    }
+                }
+            }
+
+            function watchNext() {
+                var video_
+
+                switch (mode.value) {
+                    default:
+                    case "next":
+                        if (!Number.isNaN(videoIndexCurrent)) {
+                            const index = videoIndexCurrent + 1
+
+                            if (index < videos.length) {
+                                video_ = videos[index]
+                            }
+                        }
+
+                        break
+                    case "randomAll":
+                        video_ = randomVideo(videos)
+
+                        break
+                    case "randomFilter":
+                        video_ = randomVideo(videosFiltered)
+
+                        break
+                }
+
+                watch(video_)
+            }
+
+            function setupCheckbox(checkbox, id) {
+                checkbox.value = window.localStorage.getItem(id) || false
+                checkbox.addEventListener("click", event => {
+                    window.localStorage.setItem(id, event.srcElement.value)
+                })
+            }
+
+            document.addEventListener("DOMContentLoaded", () => {
+                filter = document.getElementById("filter")
+                videos = document.getElementsByClassName("video")
+                title = document.getElementById("title")
+                video = document.getElementById("video")
+                prev = document.getElementById("prev")
+                next = document.getElementById("next")
+                autoplay = document.getElementById("autoplay")
+                mode = document.getElementById("mode")
+                fullscreen = document.getElementById("fullscreen")
+
+                filter.value = window.localStorage.getItem("filter") || ""
+                filter.addEventListener("keyup", filterVideos)
+
+                for (var i = 0; i < videos.length; i++) {
+                    videos[i].addEventListener("click", event => {
+                        if (videoCurrent) {
+                            videoCurrent.style.backgroundColor = "black"
+                        }
+
+                        videoCurrent = event.srcElement
+                        videoCurrent.style.backgroundColor = "blue"
+
+                        watch(videoCurrent)
+                    })
+                }
+
+                video.addEventListener("ended", () => {
+                    if (autoplay.value) {
+                        watchNext()
+                    }
+                })
+
+                prev.addEventListener("click", watchPrev)
+
+                next.addEventListener("click", watchNext)
+
+                setupCheckbox(autoplay, "autoplay")
+                setupCheckbox(mode, "mode")
+                setupCheckbox(fullscreen, "fullscreen")
+                filterVideos()
+            })
+        </script>
+    </head>
+    <body>
+        <div class="section">
+            <img src="/splash" width="300" height="300">
+        </div>
+        <div class="section">
+            <div>News:</div>
+            <ul>
+                <li>Currently no news</li>
+            </ul>
+        </div>
+        <div class="section">
+            <form action="javascript:void(0)">
+                <label for="filter">Filter:</label>
+                <input id="filter" name="filter" type="text">
+            </form>
+            <div id="videos">
+                <ul>%VIDEOS%</ul>
+            </div>
+        </div>
+        <div class="section">
+            <h1 id="title">Video</h1>
+            <video id="video" width="640" height="360" controls autoplay></video>
+            <div>
+                <button id="prev">Prev</button>
+                <button id="next">Next</button>
+            </div>
+        </div>
+        <div class="section">
+            <form action="javascript:void(0)">
+                <label for="autoplay">Autoplay:</label>
+                <input id="autoplay" name="autoplay" type="checkbox">
+                <select id="mode">
+                    <option value="next">Next</option>
+                    <option value="randomAll">Random (All)</option>
+                    <option value="randomFiltered">Random (Filtered)</option>
+                </select>
+            </form>
+            <form action="javascript:void(0)">
+                <label for="fullscreen">Autoplay:</label>
+                <input id="fullscreen" name="fullscreen" type="checkbox">
+            </form>
+        </div>
+    </body>
+</html>
